@@ -1,11 +1,14 @@
 # ViPER: Visibility-based Pursuit-Evasion via Reinforcement Learning
 
-This repository hosts the code for [ViPER](https://openreview.net/pdf?id=EPujQZWemk), accepted for [CoRL 2024](https://www.corl.org/).
+This repository hosts the code for [**ViPER**](https://openreview.net/pdf?id=EPujQZWemk), accepted for [CoRL 2024](https://www.corl.org/).
 
 <div>
    <img src="utils/media/demo.gif" height="250"/>
    <img src="utils/media/demo_large.gif" height="250"/>
 </div>
+
+ViPER is a neural framework for visibility-based pursuit-evasion, where agents cooperatively search for worst-case evaders.
+A team of agents methodically explores and clears the entire environment by expanding frontiers, turning all contaminated areas (white) into cleared ones (green).
 
 ## Setup instructions
 
@@ -31,15 +34,15 @@ Set appropriate parameters in `test_parameter.py` and run `test_driver.py` to ev
 
 You can also create your own map by running `viper_demo.py`, which opens a canvas for you to draw on.
 
-- Use _Obstacle_ and _Free Space_ brushes to draw your map. Adjust the brush size with the thickness slider.
-- Click _Reset_ to clear the canvas, setting it entirely to obstacles or free space.
-- Click _Place Agents_ to place multiple agents in the **free space**.
-- Click _Play_ to observe how ViPER agents plan their paths. The canvas will close and the interactive demo will play automatically.
+- Use **Obstacle** and **Free Space** brushes to draw your map. Adjust the brush size with the thickness slider.
+- Click **Reset** to clear the canvas, setting it entirely to obstacles or free space.
+- Click **Place Agents** to place multiple agents in the free space.
+- Click **Play** to observe how ViPER agents plan their paths. The canvas will close and the interactive demo will play automatically.
 
 Alternatively, you can save the map that you created.
 
-- Click _Start Position_ to place the starting position of agents.
-- Click _Save Map_ before closing the canvas. Your map will be saved as `maps_spec/map.png`. 
+- Click **Start Position** to place the starting position of agents.
+- Click **Save Map** before closing the canvas. Your map will be saved as `maps_spec/map.png`. 
 
 ## Training
 
