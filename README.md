@@ -17,7 +17,7 @@ Use conda and pip to setup environments:
 ```bash
 conda create -n viper python=3.11 scikit-image imageio tensorboard matplotlib pytorch pytorch-cuda=11.8 -c pytorch -c nvidia -y
 conda activate viper
-pip install ray opencv-python wandb 
+pip install ray wandb opencv-python-headless
 ```
 
 ## Evaluation
