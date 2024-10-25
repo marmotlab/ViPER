@@ -36,6 +36,7 @@ You can also create your own map by running `viper_demo.py`, which opens a canva
 
 - Use **Obstacle** and **Free Space** brushes to draw your map. Adjust the brush size with the thickness slider.
 - Click **Reset** to clear the canvas, setting it entirely to obstacles or free space.
+- Click **Random Map** to load a random map from test map dataset.
 - Click **Place Agents** to place multiple agents in the free space.
 - Click **Play** to observe how ViPER agents plan their paths. The canvas will close and the interactive demo will play automatically.
 

@@ -1,10 +1,10 @@
-import time
-
 import cv2
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from matplotlib.widgets import Button, Slider
 import pickle
 from skimage.measure import block_reduce
+from skimage import io
 from copy import deepcopy
 import torch
 
@@ -47,11 +47,14 @@ class MapEditor:
 
         # Setup Plot
         self.fig, self.ax = plt.subplots(figsize=(9, 9))
+        self.ax.set_title("Draw your map", fontsize=12, fontweight='bold')
+        self.ax.axis('off')
         plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.3)
 
         # UI
         self.map_display = self.ax.imshow(self.map_array, cmap='gray', vmin=0, vmax=255)
         self.cursor_square = self.ax.add_patch(plt.Rectangle((0, 0), 1, 1, fill=None, edgecolor='red', visible=False))
+        self.tooltip = self.fig.text(0.5, 0.01, '', ha='center', va='bottom', fontsize=10, color='gray', alpha=0)
         self._add_ui_components()
         self._connect_events()
 
@@ -64,16 +67,14 @@ class MapEditor:
     def _add_ui_components(self):
         button_width = 0.15
         button_height = 0.05
-        spacing_x = 0.02  # Horizontal spacing between buttons
-        spacing_y = 0.01  # Vertical spacing between rows
+        spacing_x = 0.0
+        spacing_y = 0.01
 
-        # Define vertical positions for each row (lowered)
-        row1_y = 0.2  # Row 1: Top row of buttons
-        row2_y = row1_y - (button_height + spacing_y)  # Row 2: Middle row of buttons
-        row3_y = row2_y - (button_height + spacing_y)  # Row 3: Bottom row of buttons
+        row1_y = 0.2
+        row2_y = row1_y - (button_height + spacing_y)
 
-        # Row 1: Obstacle | Free Space | Reset
-        total_width_row1 = 3 * button_width + 2 * spacing_x
+        # Row 1: Obstacle | Free Space | Reset | Random Map
+        total_width_row1 = 4 * button_width + 3 * spacing_x
         start_x_row1 = (1 - total_width_row1) / 2
 
         ax_button_obstacle = plt.axes([start_x_row1, row1_y, button_width, button_height])
@@ -88,8 +89,13 @@ class MapEditor:
         self.button_reset = Button(ax_button_reset, 'Reset')
         self.button_reset.on_clicked(self.reset_map)
 
-        # Row 2: Place Agents | Play
-        total_width_row2 = 2 * button_width + spacing_x
+        ax_button_random_map = plt.axes(
+            [start_x_row1 + 3 * (button_width + spacing_x), row1_y, button_width, button_height])
+        self.button_random_map = Button(ax_button_random_map, 'Random Map')
+        self.button_random_map.on_clicked(self.load_random_map)
+
+        # Row 2: Place Agents | Play | Start | Save Map
+        total_width_row2 = 4 * button_width + 3 * spacing_x
         start_x_row2 = (1 - total_width_row2) / 2
 
         ax_button_place_agents = plt.axes([start_x_row2, row2_y, button_width, button_height])
@@ -98,31 +104,30 @@ class MapEditor:
 
         ax_button_play = plt.axes([start_x_row2 + button_width + spacing_x, row2_y, button_width, button_height])
         self.button_play = Button(ax_button_play, 'Play')
+        self.button_play.color = mcolors.CSS4_COLORS['lightgreen']
+        self.button_play.hovercolor = mcolors.CSS4_COLORS['palegreen']
         self.button_play.on_clicked(self.play)
 
-        # Row 3: Start | Save Map
-        total_width_row3 = 2 * button_width + spacing_x
-        start_x_row3 = (1 - total_width_row3) / 2
-
-        ax_button_start = plt.axes([start_x_row3, row3_y, button_width, button_height])
+        ax_button_start = plt.axes([start_x_row2 + 2 * (button_width + spacing_x), row2_y, button_width, button_height])
         self.button_start = Button(ax_button_start, 'Start Position')
         self.button_start.on_clicked(lambda _: self.toggle_drawing_mode('start'))
 
-        ax_button_save = plt.axes([start_x_row3 + button_width + spacing_x, row3_y, button_width, button_height])
+        ax_button_save = plt.axes([start_x_row2 + 3 * (button_width + spacing_x), row2_y, button_width, button_height])
         self.button_save = Button(ax_button_save, 'Save Map')
         self.button_save.on_clicked(self.save_map)
 
         # Slider
-        ax_slider_thickness = plt.axes([0.2, 0.04, 0.6, 0.03])
+        ax_slider_thickness = plt.axes([0.2, 0.09, 0.6, 0.03])
         self.slider_thickness = Slider(ax_slider_thickness, 'Thickness', 5, 120, valinit=50, valstep=1)
 
         # Cursor Position Text
-        self.cursor_pos = self.fig.text(0.02, 0.95, 'Cursor: (0, 0)', fontsize=10)
+        self.cursor_pos = self.fig.text(0.43, 0.28, 'Cursor: (0, 0)', fontsize=10, color='gray')
 
     def _connect_events(self):
         self.fig.canvas.mpl_connect('button_press_event', self.on_click)
         self.fig.canvas.mpl_connect('button_release_event', self.on_release)
         self.fig.canvas.mpl_connect('motion_notify_event', self.on_move)
+        self.fig.canvas.mpl_connect('motion_notify_event', self.on_hover)
 
     def update_display(self):
         self.map_display.set_data(self.temp_map_array)
@@ -183,6 +188,38 @@ class MapEditor:
                 self.temp_map_array = temp_array
                 self.update_display()
             self.fig.canvas.draw_idle()
+
+    def on_hover(self, event):
+        if event.inaxes is not None:
+            if self.button_obstacle.ax.contains(event)[0]:
+                self.show_tooltip("Draw obstacles.")
+            elif self.button_free_space.ax.contains(event)[0]:
+                self.show_tooltip("Draw free space.")
+            elif self.button_reset.ax.contains(event)[0]:
+                self.show_tooltip("Clear the canvas, set to obstacle or free space (click again).")
+            elif self.button_random_map.ax.contains(event)[0]:
+                self.show_tooltip("Load a random map from /maps_test.")
+            elif self.button_place_agents.ax.contains(event)[0]:
+                self.show_tooltip("Place agents in the free space.")
+            elif self.button_play.ax.contains(event)[0]:
+                self.show_tooltip("Start ViPER simulation.")
+            elif self.button_start.ax.contains(event)[0]:
+                self.show_tooltip("Set the start position (if you want to save the map).")
+            elif self.button_save.ax.contains(event)[0]:
+                self.show_tooltip("Save the current map to /maps_spec/map.png.")
+            else:
+                self.hide_tooltip()
+        else:
+            self.hide_tooltip()
+
+    def show_tooltip(self, message):
+        self.tooltip.set_text(message)
+        self.tooltip.set_alpha(1)
+        self.fig.canvas.draw_idle()
+
+    def hide_tooltip(self):
+        self.tooltip.set_alpha(0)
+        self.fig.canvas.draw_idle()
 
     def update_cursor_square(self, event):
         if self.drawing_mode == 'obstacle':
@@ -275,6 +312,17 @@ class MapEditor:
         self.robot_cells_user.append([x, y])
         self.fig.canvas.draw_idle()
 
+    def load_random_map(self, _=None):
+        map_list = os.listdir('maps_test')
+        map_path = os.path.join('maps_test', np.random.choice(map_list))
+        if os.path.exists(map_path):
+            self.map_array = (io.imread(map_path, 1)).astype(int)
+            self.map_array[self.map_array == self.start_position_value] = self.free_space_value
+            self.temp_map_array = np.copy(self.map_array)
+            self.update_display()
+        else:
+            print(f"Map {map_path} does not exist.")
+
     def reset_map(self, _=None):
         if self.reset_state:
             self.map_array.fill(self.free_space_value)
@@ -333,6 +381,7 @@ class InteractiveEnv(Env):
             robot_loc = self.ground_truth_coords[nearest_index]
             robot_locations.append(robot_loc)
         return np.array(robot_locations)
+
 
 class InteractiveWorker(TestWorker):
     def __init__(self, meta_agent_id, policy_net, global_step):
