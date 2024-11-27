@@ -164,9 +164,9 @@ class Env:
     def calculate_reward(self, dist_list):
         safety_increase = np.sum(self.safe_zone == 255) - np.sum(self.old_safe_zone == 255)
 
-        reward_list = np.ones(self.n_agent) * safety_increase / self.n_agent / 1000
+        reward_list = np.ones(self.n_agent) * safety_increase / 1000
 
-        reward_list = reward_list * self.n_agent - np.max(dist_list) / 30
+        reward_list = reward_list - np.max(dist_list) / 30
 
         if self.done:
             reward_list += 30
