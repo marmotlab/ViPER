@@ -50,7 +50,7 @@ def main():
     if USE_WANDB:
         import parameter
         vars(parameter).__delitem__('__builtins__')
-        wandb.init(project='MASafezone', name=FOLDER_NAME, entity='ezo', config=vars(parameter), resume='allow',
+        wandb.init(project='ViPER', name=FOLDER_NAME, entity='your_entity', config=vars(parameter), resume='allow',
                    id=None, notes=None)
 
     # load model and optimizer trained before
